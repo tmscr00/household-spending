@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#16a34a" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Spending" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<link rel="manifest" href="manifest.json" />
+<title>Shared Spending — Samet &amp; Ellen</title>
+<style>
+  :root {
+    --bg: #f4f4f2; --surface: #ffffff; --surface-2: #f0efe9;
+    --text: #1c1c1a; --text-2: #6b6b66; --text-3: #9a9a93;
+    --border: rgba(0,0,0,0.10); --border-2: rgba(0,0,0,0.18);
+    --accent: #16a34a; --accent-bg: #e7f5ec; --warning: #b8860b; --danger: #c0392b;
+    --radius: 12px; --radius-sm: 8px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a18; --surface: #242421; --surface-2: #2e2e2a;
+      --text: #f2f2ee; --text-2: #a8a8a1; --text-3: #76766f;
+      --border: rgba(255,255,255,0.12); --border-2: rgba(255,255,255,0.20);
+      --accent: #34d17a; --accent-bg: #1d3a28; --warning: #d9a93c; --danger: #e57368;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.5; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 16px 48px; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .header h1 { font-size: 19px; font-weight: 600; margin: 0; }
+  .header .sub { font-size: 13px; color: var(--text-2); margin: 2px 0 0; }
+  .who { display: flex; gap: 6px; }
+  .who button { font-size: 13px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--border-2); background: transparent; color: var(--text-2); cursor: pointer; font-family: inherit; }
+  .who button.active { background: var(--accent-bg); color: var(--accent); border-color: transparent; font-weight: 600; }
+
+  .sync { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); margin-bottom: 12px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); flex-shrink: 0; }
+  .dot.ok { background: var(--accent); }
+  .dot.err { background: var(--danger); }
+
+  .seg { display: flex; background: var(--surface-2); border-radius: 999px; padding: 3px; margin-bottom: 14px; }
+  .seg button { flex: 1; border: none; background: transparent; color: var(--text-2); font-family: inherit; font-size: 14px; font-weight: 600; padding: 9px 0; border-radius: 999px; cursor: pointer; }
+  .seg button.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+
+  .budget { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+  .budget-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .budget-top .bl { font-size: 13px; color: var(--text-2); }
+  .budget-edit { width: 78px; height: 34px; padding: 0 10px; font-size: 14px; font-family: inherit; text-align: right; border: 1px solid var(--border-2); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); -webkit-appearance: none; appearance: none; }
+  .budget-edit:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+  .bar { height: 10px; background: var(--surface-2); border-radius: 999px; overflow: hidden; margin-bottom: 8px; }
+  .bar-fill { height: 100%; border-radius: 999px; transition: width 0.25s ease; }
+  .budget-foot { display: flex; justify-content: space-between; font-size: 13px; }
+  .budget-foot .spent { color: var(--text-2); }
+  .budget-foot .left { font-weight: 600; }
+
+  .cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .card { background: var(--surface-2); border-radius: var(--radius-sm); padding: 12px 12px; }
+  .card .label { font-size: 12px; color: var(--text-2); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .val { font-size: 19px; font-weight: 600; margin: 4px 0 0; }
+  .card.total .val { color: var(--accent); }
+
+  .by-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .by-card { flex: 1; background: var(--surface-2); border-radius: var(--radius-sm); padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; }
+  .by-card .nm { font-size: 13px; color: var(--text-2); }
+  .by-card .vl { font-size: 15px; font-weight: 600; }
+
+  .form { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+  input, select { width: 100%; height: 42px; padding: 0 12px; font-size: 16px; font-family: inherit; border: 1px solid var(--border-2); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); -webkit-appearance: none; appearance: none; }
+  input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+  .mb8 { margin-bottom: 8px; }
+  .receipt-label { display: flex; align-items: center; justify-content: center; gap: 8px; height: 42px; border: 1px dashed var(--border-2); border-radius: var(--radius-sm); font-size: 14px; color: var(--text-2); cursor: pointer; margin-bottom: 8px; }
+  .receipt-label.has { color: var(--accent); border-color: var(--accent); }
+  .add-btn { width: 100%; height: 44px; border: none; border-radius: var(--radius-sm); background: var(--accent); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .add-btn:active { opacity: 0.85; }
+  .add-btn:disabled { opacity: 0.5; }
+
+  .item { display: flex; justify-content: space-between; align-items: center; padding: 13px 2px; border-bottom: 1px solid var(--border); }
+  .item .main { min-width: 0; flex: 1; }
+  .item .title { margin: 0; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .meta { margin: 2px 0 0; font-size: 12px; color: var(--text-2); }
+  .item .right { display: flex; align-items: center; gap: 8px; padding-left: 10px; flex-shrink: 0; }
+  .item .price { font-size: 15px; font-weight: 600; }
+  .icon-btn { border: none; background: none; cursor: pointer; padding: 4px; font-size: 17px; line-height: 1; color: var(--text-3); }
+  .icon-btn.photo { color: var(--accent); }
+  .empty { text-align: center; color: var(--text-2); font-size: 14px; padding: 20px 0; }
+  .list-head { font-size: 13px; color: var(--text-2); margin: 4px 2px 0; font-weight: 600; }
+
+  .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+  .modal.open { display: flex; }
+  .modal-inner { background: var(--surface); border-radius: var(--radius); padding: 14px; max-width: 360px; width: 100%; max-height: 85vh; overflow: auto; }
+  .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .modal-head .t { font-size: 15px; font-weight: 600; }
+  .modal img { width: 100%; border-radius: var(--radius-sm); display: block; }
+
+  .banner { background: var(--danger); color: #fff; font-size: 13px; padding: 10px 14px; border-radius: var(--radius-sm); margin-bottom: 12px; display: none; }
+  .banner.show { display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div>
+      <h1>Shared spending</h1>
+      <p class="sub" id="period-sub"></p>
+    </div>
+    <div class="who" id="who"></div>
+  </div>
+
+  <div class="sync"><span class="dot" id="sync-dot"></span><span id="sync-text">Connecting…</span></div>
+
+  <div class="banner" id="banner"></div>
+
+  <div class="seg" id="seg">
+    <button data-period="week">This week</button>
+    <button data-period="month">This month</button>
+  </div>
+
+  <div class="budget" id="budget">
+    <div class="budget-top">
+      <span class="bl"><span id="budget-period-word">Weekly</span> budget</span>
+      <span style="display:flex; align-items:center; gap:4px; color:var(--text-2); font-size:14px;">&euro;
+        <input class="budget-edit" id="budget-input" type="number" inputmode="decimal" />
+      </span>
+    </div>
+    <div class="bar"><div class="bar-fill" id="bar-fill"></div></div>
+    <div class="budget-foot">
+      <span class="spent" id="budget-spent"></span>
+      <span class="left" id="budget-left"></span>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card total"><p class="label" id="lbl-total">Total</p><p class="val" id="sum-total">&euro;0</p></div>
+    <div class="card"><p class="label">&#128722; Groceries</p><p class="val" id="sum-groceries">&euro;0</p></div>
+    <div class="card"><p class="label">&bull; Misc</p><p class="val" id="sum-misc">&euro;0</p></div>
+  </div>
+
+  <div class="by-row">
+    <div class="by-card"><span class="nm">Samet</span><span class="vl" id="by-samet">&euro;0</span></div>
+    <div class="by-card"><span class="nm">Ellen</span><span class="vl" id="by-ellen">&euro;0</span></div>
+  </div>
+
+  <div class="form">
+    <div class="row2">
+      <input id="amount" type="number" inputmode="decimal" placeholder="Amount &euro;" />
+      <select id="cat"><option>Groceries</option><option>Misc</option></select>
+    </div>
+    <input id="note" class="mb8" type="text" placeholder="Note (optional)" />
+    <label class="receipt-label" id="receipt-label" for="receipt">
+      <span>&#128247;</span><span id="receipt-text">Attach receipt photo</span>
+    </label>
+    <input id="receipt" type="file" accept="image/*" capture="environment" style="display:none;" />
+    <button class="add-btn" id="add">Add expense</button>
+  </div>
+
+  <p class="list-head" id="list-head" style="display:none;"></p>
+  <div id="list"></div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="modal-inner">
+    <div class="modal-head">
+      <span class="t" id="modal-title">Receipt</span>
+      <button class="icon-btn" id="modal-close" style="font-size:22px;">&#10005;</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+(function(){
+  var PEOPLE = ["Samet", "Ellen"];
+  var ICON = { Groceries: "\u{1F6D2}", Misc: "\u2022" };
+  var me = PEOPLE[0];
+  var period = "week";
+  var pendingReceiptFile = null;
+  var expenses = [];
+  var weeklyBudget = 100;
+  var sb = null;
+
+  // ---- local prefs only (which person, which view) ----
+  try { var w = localStorage.getItem("hh_me"); if (w && PEOPLE.indexOf(w)!==-1) me = w; } catch(e){}
+  try { var p = localStorage.getItem("hh_period"); if (p==="week"||p==="month") period = p; } catch(e){}
+  function savePrefs(){ try { localStorage.setItem("hh_me", me); localStorage.setItem("hh_period", period); } catch(e){} }
+
+  function fmt(n){ return "\u20AC" + (Math.round(n*100)/100).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2}); }
+  function escapeHtml(s){ if(!s) return ""; return s.replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+
+  function startOfWeek(){ var d=new Date(); d.setHours(0,0,0,0); var day=(d.getDay()+6)%7; d.setDate(d.getDate()-day); return d; }
+  function startOfMonth(){ var d=new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); }
+  function periodStart(){ return period==="week" ? startOfWeek() : startOfMonth(); }
+  function periodExp(){ var s=periodStart(); return expenses.filter(function(e){ return new Date(e.spent_on+"T00:00:00") >= s; }); }
+  function weeksInMonth(){ var d=new Date(); return new Date(d.getFullYear(), d.getMonth()+1, 0).getDate()/7; }
+  function budgetForPeriod(){ return period==="week" ? weeklyBudget : Math.round(weeklyBudget*weeksInMonth()); }
+  function periodSubLabel(){ if(period==="week"){ return "Week of " + startOfWeek().toLocaleDateString(undefined,{day:"numeric",month:"short"}); } return new Date().toLocaleDateString(undefined,{month:"long",year:"numeric"}); }
+
+  function setSync(stateName, msg){
+    var dot=document.getElementById("sync-dot"), txt=document.getElementById("sync-text");
+    dot.className = "dot" + (stateName==="ok"?" ok":stateName==="err"?" err":"");
+    txt.textContent = msg;
+  }
+  function showBanner(msg){ var b=document.getElementById("banner"); b.textContent=msg; b.classList.add("show"); }
+
+  function renderWho(){
+    var c=document.getElementById("who");
+    c.innerHTML = PEOPLE.map(function(p){ return '<button data-who="'+p+'" class="'+(me===p?"active":"")+'">'+p+'</button>'; }).join("");
+    Array.prototype.forEach.call(c.querySelectorAll("button"), function(b){ b.onclick=function(){ me=b.getAttribute("data-who"); savePrefs(); render(); }; });
+  }
+  function renderSeg(){
+    var c=document.getElementById("seg");
+    Array.prototype.forEach.call(c.querySelectorAll("button"), function(b){ var p=b.getAttribute("data-period"); b.className=(period===p)?"active":""; b.onclick=function(){ period=p; savePrefs(); render(); }; });
+  }
+  function renderBudget(total){
+    document.getElementById("budget-period-word").textContent = (period==="week"?"Weekly":"Monthly");
+    var input=document.getElementById("budget-input");
+    if (document.activeElement !== input) input.value = (period==="week") ? weeklyBudget : budgetForPeriod();
+    input.disabled = (period!=="week"); input.style.opacity = (period==="week")?"1":"0.55";
+    var budget=budgetForPeriod();
+    var pct = budget>0 ? Math.min(100, Math.round(total/budget*100)) : 0;
+    var over = total>budget && budget>0;
+    var color = over ? "var(--danger)" : (pct>80 ? "var(--warning)" : "var(--accent)");
+    var fill=document.getElementById("bar-fill"); fill.style.width=pct+"%"; fill.style.background=color;
+    document.getElementById("budget-spent").textContent = fmt(total)+" of "+fmt(budget);
+    var leftEl=document.getElementById("budget-left");
+    if(over){ leftEl.textContent=fmt(total-budget)+" over"; leftEl.style.color="var(--danger)"; }
+    else { leftEl.textContent=fmt(budget-total)+" left"; leftEl.style.color="var(--text)"; }
+  }
+  function renderSums(){
+    var items=periodExp(); var s={Groceries:0,Misc:0}, total=0, by={Samet:0,Ellen:0};
+    items.forEach(function(e){ s[e.category]+=Number(e.amount); total+=Number(e.amount); if(by[e.added_by]!==undefined) by[e.added_by]+=Number(e.amount); });
+    document.getElementById("lbl-total").textContent = (period==="week"?"This week":"This month");
+    document.getElementById("sum-total").textContent = fmt(total);
+    document.getElementById("sum-groceries").textContent = fmt(s.Groceries);
+    document.getElementById("sum-misc").textContent = fmt(s.Misc);
+    document.getElementById("by-samet").textContent = fmt(by.Samet);
+    document.getElementById("by-ellen").textContent = fmt(by.Ellen);
+    renderBudget(total);
+  }
+  function renderList(){
+    var c=document.getElementById("list"), head=document.getElementById("list-head");
+    var items=periodExp().slice().sort(function(a,b){ if(a.spent_on!==b.spent_on) return a.spent_on<b.spent_on?1:-1; return a.created_at<b.created_at?1:-1; });
+    if(!items.length){ head.style.display="none"; c.innerHTML='<p class="empty">No spending logged '+(period==="week"?"this week":"this month")+' yet.</p>'; return; }
+    head.style.display="block";
+    head.textContent = (period==="week"?"This week":"This month")+" \u00B7 "+items.length+" item"+(items.length>1?"s":"");
+    c.innerHTML = items.map(function(e){
+      var photo = e.receipt_url ? '<button class="icon-btn photo" data-view="'+e.id+'" title="View receipt">\u{1F5BC}\uFE0F</button>' : '';
+      var dd = e.spent_on.slice(8)+"/"+e.spent_on.slice(5,7);
+      return '<div class="item"><div class="main"><p class="title">'+(ICON[e.category]||"")+' '+(escapeHtml(e.note)||e.category)+'</p>'+
+             '<p class="meta">'+e.added_by+' \u00B7 '+dd+'</p></div>'+
+             '<div class="right">'+photo+'<span class="price">'+fmt(Number(e.amount))+'</span>'+
+             '<button class="icon-btn" data-del="'+e.id+'" title="Delete">\u2715</button></div></div>';
+    }).join("");
+    Array.prototype.forEach.call(c.querySelectorAll("[data-del]"), function(b){ b.onclick=function(){ deleteExpense(b.getAttribute("data-del")); }; });
+    Array.prototype.forEach.call(c.querySelectorAll("[data-view]"), function(b){ b.onclick=function(){ openModal(b.getAttribute("data-view")); }; });
+  }
+  function openModal(id){
+    var e=expenses.filter(function(x){ return x.id===id; })[0]; if(!e||!e.receipt_url) return;
+    document.getElementById("modal-title").textContent = (e.note||e.category);
+    document.getElementById("modal-body").innerHTML = '<img src="'+e.receipt_url+'" alt="Receipt" />';
+    document.getElementById("modal").classList.add("open");
+  }
+  function render(){
+    document.getElementById("period-sub").textContent = periodSubLabel();
+    renderWho(); renderSeg(); renderSums(); renderList();
+  }
+
+  // ---------------- Supabase data layer ----------------
+  function receiptUrl(path){
+    if(!path) return null;
+    var r = sb.storage.from("receipts").getPublicUrl(path);
+    return r && r.data ? r.data.publicUrl : null;
+  }
+
+  async function fetchAll(){
+    try {
+      var ex = await sb.from("expenses").select("*").eq("household", HOUSEHOLD_ID);
+      if (ex.error) throw ex.error;
+      expenses = (ex.data||[]).map(function(e){ e.receipt_url = receiptUrl(e.receipt_path); return e; });
+      var st = await sb.from("settings").select("weekly_budget").eq("household", HOUSEHOLD_ID).single();
+      if (!st.error && st.data) weeklyBudget = Number(st.data.weekly_budget);
+      setSync("ok", "Synced");
+      render();
+    } catch (err) {
+      setSync("err", "Sync error");
+      showBanner("Could not reach Supabase. Check config.js and that you ran the setup SQL.");
+      console.error(err);
+    }
+  }
+
+  async function addExpense(payload, file){
+    var id = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+    var receipt_path = null;
+    try {
+      if (file){
+        receipt_path = HOUSEHOLD_ID + "/" + id + ".jpg";
+        var up = await sb.storage.from("receipts").upload(receipt_path, file, { contentType: file.type || "image/jpeg", upsert: true });
+        if (up.error) throw up.error;
+      }
+      var row = { id:id, household:HOUSEHOLD_ID, amount:payload.amount, category:payload.category, note:payload.note, added_by:payload.added_by, spent_on:payload.spent_on, receipt_path:receipt_path };
+      var ins = await sb.from("expenses").insert(row);
+      if (ins.error) throw ins.error;
+      // optimistic local add (realtime will also confirm)
+      row.receipt_url = receiptUrl(receipt_path);
+      if (!expenses.some(function(e){ return e.id===id; })) { row.created_at = new Date().toISOString(); expenses.push(row); }
+      render();
+    } catch (err) {
+      showBanner("Could not save the expense. " + (err.message||""));
+      console.error(err);
+    }
+  }
+
+  async function deleteExpense(id){
+    var e = expenses.filter(function(x){ return x.id===id; })[0];
+    expenses = expenses.filter(function(x){ return x.id!==id; });
+    render();
+    try {
+      if (e && e.receipt_path) await sb.storage.from("receipts").remove([e.receipt_path]);
+      var del = await sb.from("expenses").delete().eq("id", id);
+      if (del.error) throw del.error;
+    } catch (err) { showBanner("Could not delete on the server; it may reappear."); console.error(err); fetchAll(); }
+  }
+
+  async function saveBudget(v){
+    weeklyBudget = Math.round(v);
+    renderSums();
+    try {
+      var up = await sb.from("settings").upsert({ household:HOUSEHOLD_ID, weekly_budget:weeklyBudget });
+      if (up.error) throw up.error;
+    } catch (err) { showBanner("Could not save the budget."); console.error(err); }
+  }
+
+  function subscribeRealtime(){
+    sb.channel("hh-realtime")
+      .on("postgres_changes", { event:"*", schema:"public", table:"expenses" }, function(){ fetchAll(); })
+      .on("postgres_changes", { event:"*", schema:"public", table:"settings" }, function(){ fetchAll(); })
+      .subscribe();
+  }
+
+  // ---------------- form wiring ----------------
+  function bindForm(){
+    var fileInput=document.getElementById("receipt"), label=document.getElementById("receipt-label"), txt=document.getElementById("receipt-text");
+    fileInput.onchange=function(){
+      var f=fileInput.files[0];
+      if(!f){ pendingReceiptFile=null; txt.textContent="Attach receipt photo"; label.classList.remove("has"); return; }
+      var reader=new FileReader();
+      reader.onload=function(){
+        var img=new Image();
+        img.onload=function(){
+          var max=1200, scale=Math.min(1, max/Math.max(img.width,img.height));
+          var cv=document.createElement("canvas"); cv.width=img.width*scale; cv.height=img.height*scale;
+          cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+          cv.toBlob(function(blob){ pendingReceiptFile=blob; txt.textContent=f.name.length>22?f.name.slice(0,20)+"\u2026":f.name; label.classList.add("has"); }, "image/jpeg", 0.7);
+        };
+        img.src=reader.result;
+      };
+      reader.readAsDataURL(f);
+    };
+
+    document.getElementById("budget-input").onchange=function(){ var v=parseFloat(this.value); if(!v||v<0) v=0; saveBudget(v); };
+
+    document.getElementById("add").onclick=function(){
+      var amt=parseFloat(document.getElementById("amount").value);
+      if(!amt||amt<=0){ alert("Enter an amount first."); return; }
+      var btn=this; btn.disabled=true; btn.textContent="Saving…";
+      addExpense({ amount:amt, category:document.getElementById("cat").value, note:document.getElementById("note").value.trim(), added_by:me, spent_on:new Date().toISOString().slice(0,10) }, pendingReceiptFile)
+        .then(function(){
+          document.getElementById("amount").value=""; document.getElementById("note").value=""; document.getElementById("receipt").value="";
+          pendingReceiptFile=null; txt.textContent="Attach receipt photo"; label.classList.remove("has");
+          btn.disabled=false; btn.textContent="Add expense";
+        });
+    };
+
+    document.getElementById("modal-close").onclick=function(){ document.getElementById("modal").classList.remove("open"); };
+    document.getElementById("modal").onclick=function(ev){ if(ev.target.id==="modal") this.classList.remove("open"); };
+  }
+
+  // ---------------- start ----------------
+  function start(){
+    if (typeof SUPABASE_URL==="undefined" || SUPABASE_URL.indexOf("YOUR-PROJECT")!==-1){
+      setSync("err","Not configured");
+      showBanner("Open config.js and paste in your Supabase URL and key. See the README.");
+      render(); bindForm(); return;
+    }
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    bindForm(); render();
+    fetchAll(); subscribeRealtime();
+    window.addEventListener("focus", fetchAll);
+  }
+  start();
+})();
+</script>
+</body>
+</html>
